@@ -19,6 +19,7 @@ def stream_users_in_batches(batch_size):
 		offset += batch_size
 	cursor.close()
 	conn.close()
+	return
 
 
 def batch_processing(batch_size):
@@ -35,3 +36,4 @@ def batch_processing(batch_size):
 			except (KeyError, ValueError, TypeError):
 				continue
 		yield filtered
+

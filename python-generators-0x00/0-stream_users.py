@@ -13,7 +13,7 @@ DB_CONFIG = {
 TABLE_NAME = 'user_data'
 
 
-def stream_user_data():
+def stream_users():
 	"""Generator that streams rows from user_data table one by one."""
 	connection = mysql.connector.connect(**DB_CONFIG)
 	cursor = connection.cursor(dictionary=True)

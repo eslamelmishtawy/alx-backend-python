@@ -69,14 +69,6 @@ def read_csv(csv_file):
 		reader = csv.DictReader(f)
 		return [row for row in reader]
 
-def stream_user_data(connection):
-	"""Generator that streams rows from user_data table one by one."""
-	cursor = connection.cursor(dictionary=True)
-	cursor.execute(f"SELECT * FROM {TABLE_NAME}")
-	for row in cursor:
-		yield row
-	cursor.close()
-
 if __name__ == "__main__":
 	conn = connect_db()
 	create_database(conn)

@@ -2,20 +2,13 @@
 stream_users.py
 A generator function to stream rows from the user_data table one by one using MySQL.
 """
-import mysql.connector
 
-DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': '',  # Update with your MySQL root password if needed
-    'database': 'ALX_prodev'
-}
-TABLE_NAME = 'user_data'
+from seed import TABLE_NAME, connect_to_prodev
 
 
 def stream_users():
 	"""Generator that streams rows from user_data table one by one."""
-	connection = mysql.connector.connect(**DB_CONFIG)
+	connection = connect_to_prodev()
 	cursor = connection.cursor(dictionary=True)
 	cursor.execute(f"SELECT * FROM {TABLE_NAME}")
 	while True:

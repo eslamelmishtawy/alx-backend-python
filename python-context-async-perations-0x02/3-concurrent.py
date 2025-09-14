@@ -62,8 +62,9 @@ async def async_fetch_users() -> List[Dict[str, Any]]:
 			return [dict(r) for r in rows]
 
 
-async def async_fetch_older_users(age_threshold: int = 40) -> List[Dict[str, Any]]:
-	"""Fetch users older than the given threshold (default 40)."""
+async def async_fetch_older_users() -> List[Dict[str, Any]]:
+	"""Fetch users older than 40 (fixed threshold per spec)."""
+	age_threshold = 40
 	async with aiosqlite.connect(DB_FILE) as db:
 		db.row_factory = aiosqlite.Row  # type: ignore[attr-defined]
 		async with db.execute("SELECT * FROM users WHERE age > ?", (age_threshold,)) as cursor:
@@ -74,7 +75,7 @@ async def async_fetch_older_users(age_threshold: int = 40) -> List[Dict[str, Any
 async def fetch_concurrently() -> None:
 	await ensure_seed()
 	all_users_task = async_fetch_users()
-	older_users_task = async_fetch_older_users(40)
+	older_users_task = async_fetch_older_users()
 	all_users, older_users = await asyncio.gather(all_users_task, older_users_task)
 
 	print("All Users ({}):".format(len(all_users)))

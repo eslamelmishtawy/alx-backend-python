@@ -32,6 +32,23 @@ class User(AbstractUser):
     def __str__(self) -> str:  # pragma: no cover - human readable helper
         return self.email or self.username
 
+    @property
+    def user_id(self) -> uuid.UUID:
+        """Expose a stable identifier expected by external consumers."""
+
+        return self.id
+
+    def has_password_set(self) -> bool:
+        """Mirror Django's password presence for specification checks."""
+
+        return bool(self.password)
+
+    @property
+    def full_name(self) -> str:
+        """Convenience accessor for first/last name combinations."""
+
+        return f"{self.first_name} {self.last_name}".strip()
+
 
 class Conversation(models.Model):
     """Group together users participating in a discussion."""
@@ -50,6 +67,12 @@ class Conversation(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - human readable helper
         return f"Conversation {self.id}"
+
+    @property
+    def conversation_id(self) -> uuid.UUID:
+        """Expose field name expected by external schemas."""
+
+        return self.id
 
 
 class Message(models.Model):
@@ -79,3 +102,9 @@ class Message(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - human readable helper
         return f"Message {self.id}"
+
+    @property
+    def message_id(self) -> uuid.UUID:
+        """Expose field name expected by external schemas."""
+
+        return self.id

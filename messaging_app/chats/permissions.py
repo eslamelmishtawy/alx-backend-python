@@ -1,9 +1,9 @@
 """Custom permissions for the chats app."""
 
-from rest_framework.permissions import BasePermission
+from rest_framework import permissions
 
 
-class IsConversationParticipant(BasePermission):
+class IsConversationParticipant(permissions.BasePermission):
     """Allow access only to conversations or messages tied to the request user."""
 
     def has_permission(self, request, view):

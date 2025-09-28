@@ -1,9 +1,12 @@
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from .models import Conversation, Message
+from .filters import MessageFilter
+from .pagination import MessagePagination
 from .permissions import IsParticipantOfConversation
 from .serializers import ConversationSerializer, MessageSerializer
 
@@ -33,7 +36,9 @@ class ConversationViewSet(viewsets.ModelViewSet):
 class MessageViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsParticipantOfConversation]
     serializer_class = MessageSerializer
-    filter_backends = [filters.OrderingFilter]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = MessageFilter
+    pagination_class = MessagePagination
     ordering_fields = ["sent_at"]
     ordering = ["sent_at"]
 

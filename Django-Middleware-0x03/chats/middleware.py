@@ -72,7 +72,7 @@ class OffensiveLanguageMiddleware:
         return request.META.get("REMOTE_ADDR", "unknown")
 
 
-class RolePermissionMiddleware:
+class RolepermissionMiddleware:
     """Ensure only privileged roles perform modifying API actions."""
 
     def __init__(self, get_response):

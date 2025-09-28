@@ -7,8 +7,9 @@ from rest_framework.response import Response
 
 
 class MessagePagination(PageNumberPagination):
-    """Return messages with settings-driven page sizes and total counts."""
+    """Return messages in 20-item pages with total counts."""
 
+    page_size = 20
     page_query_param = "page"
     page_size_query_param = "page_size"
     max_page_size = 100

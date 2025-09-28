@@ -151,6 +151,113 @@ Keep secrets outside version control (add `.env` to `.gitignore`).
 
 This setup supports quickly testing with session authentication locally while still honoring secure defaults in production.
 
+### Auth Types: Basic vs JWT vs OAuth2
+
+- Basic Auth
+  - Sends username/password on every request (Base64 over HTTPS).
+  - Simple for scripts/cURL; not ideal for browsers/SPAs; no logout/expiry semantics.
+  - DRF class: `rest_framework.authentication.BasicAuthentication`.
+
+- Session Auth
+  - Server issues a session cookie after login; subsequent requests use that cookie.
+  - Great for the DRF browsable API and server-rendered sites; CSRF protection applies.
+  - DRF class: `rest_framework.authentication.SessionAuthentication`.
+
+- JWT (JSON Web Tokens)
+  - Client stores a signed token (usually short-lived) and sends it in `Authorization: Bearer <token>`.
+  - Stateless, works well for SPAs/mobile; rotate/refresh regularly and keep lifetimes short.
+  - Library: `djangorestframework-simplejwt` with endpoints for obtain/refresh.
+
+- OAuth2
+  - Delegated auth/authorization (e.g., Google, GitHub) and third‑party API access.
+  - More moving parts (authorization server, scopes, grants). Use `django-oauth-toolkit`.
+
+### Implementing Auth in Django (this project)
+
+1) Dependencies
+   - `Django`, `djangorestframework`, `django-filter`, `djangorestframework-simplejwt`.
+
+2) Settings (`messaging_app/settings.py`)
+
+```python
+INSTALLED_APPS += [
+    "rest_framework",
+    "django_filters",
+]
+
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+        "chats.permissions.IsParticipantOfConversation",
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
+    ],
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+    ],
+}
+```
+
+3) URLs (`messaging_app/urls.py`)
+
+```python
+from chats.auth import UserTokenObtainPairView, UserTokenRefreshView
+
+urlpatterns += [
+    path("api/token/", UserTokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/token/refresh/", UserTokenRefreshView.as_view(), name="token_refresh"),
+    path("api-auth/", include("rest_framework.urls")),  # session login for browsable API
+]
+```
+
+4) Using JWT
+   - Obtain: `POST /api/token/ {"username": "<user>", "password": "<pass>"}`
+   - Refresh: `POST /api/token/refresh/ {"refresh": "<token>"}`
+   - Send token on requests: `Authorization: Bearer <access>`
+
+### Permissions in DRF (global + object-level)
+
+- Global defaults (above) enforce authentication for all endpoints.
+- Object-level rule: `IsParticipantOfConversation` ensures only conversation participants can read/mutate that conversation or its messages. Applied both globally and on `ConversationViewSet` / `MessageViewSet`.
+- Additional enforcement in views:
+  - Querysets are scoped to the authenticated user (`conversation__participants=user`).
+  - Create enforces sender matches the authenticated user and that the sender belongs to the conversation.
+
+Common extensions:
+- Use `DjangoModelPermissions`/`DjangoObjectPermissions` for per-model permissions backed by the database.
+- Implement `has_permission` and `has_object_permission` for custom business rules.
+- Pair with throttling (`DEFAULT_THROTTLE_CLASSES`) for API-wide rate limits.
+
+## Middleware (implemented here) and how to extend
+
+Registered in `settings.py -> MIDDLEWARE` after Django’s built‑ins to ensure `request.user` is populated:
+
+- `chats.middleware.RequestLoggingMiddleware`
+  - Appends a line to `requests.log` on every request: timestamp, user, path.
+  - Useful for auditing during development; rotate logs in production.
+
+- `chats.middleware.RestrictAccessByTimeMiddleware`
+  - Denies all requests outside 06:00–21:00 local time with HTTP 403.
+  - Adjust `start_hour`/`end_hour` as needed.
+
+- `chats.middleware.OffensiveLanguageMiddleware`
+  - Rate‑limits POSTs to `/api/messages` to 5 per minute per client IP.
+  - Returns HTTP 403 when the limit is exceeded. Backed by an in‑memory deque per IP (sufficient for dev; consider cache/Redis for scale).
+
+- `chats.middleware.RolePermissionMiddleware`
+  - Requires `role` to be `admin` or `moderator` for mutating `/api/` requests (POST/PUT/PATCH/DELETE).
+  - Returns HTTP 403 otherwise. Works with the custom `User.role` field.
+
+### Adding new middleware
+
+1) Create a class with `__init__(get_response)` and `__call__(request)` in `chats/middleware.py`.
+2) Add it to `MIDDLEWARE` in `settings.py` (order matters—place after `AuthenticationMiddleware` if you need `request.user`).
+3) Keep logic fast and side‑effect free; avoid DB work for every request if possible.
+4) For rate limits/abuse prevention at scale, prefer Django cache (`django.core.cache`) or an external store (Redis) instead of process memory.
+
 ## Domain Model Overview
 
 ### User (`chats.models.User`)

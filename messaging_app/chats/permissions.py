@@ -3,11 +3,11 @@
 from rest_framework import permissions
 
 
-class IsConversationParticipant(permissions.BasePermission):
-    """Allow access only to conversations or messages tied to the request user."""
+class IsParticipantOfConversation(permissions.BasePermission):
+    """Allow authenticated participants to interact with conversation data."""
 
     def has_permission(self, request, view):
-        # Defer to object-level checks for detail routes; list routes still require auth.
+        # Ensure the requester is authenticated before reaching object checks.
         return bool(request.user and request.user.is_authenticated)
 
     def has_object_permission(self, request, view, obj):
@@ -15,4 +15,9 @@ class IsConversationParticipant(permissions.BasePermission):
         participants = getattr(conversation, "participants", None)
         if participants is None:
             return False
-        return participants.filter(pk=request.user.pk).exists()
+        is_participant = participants.filter(pk=request.user.pk).exists()
+        if request.method in {"PUT", "PATCH", "DELETE"}:
+            return is_participant
+        if request.method in permissions.SAFE_METHODS:
+            return is_participant
+        return is_participant
